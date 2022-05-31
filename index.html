@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS CONTROL</title>
+
+
+
+</head>
+
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Secular+One&display=swap');
+
+    .wrapper {
+        width: 100%;
+    }
+
+    h1 {
+        font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        font-size: 50px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    p {
+        font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        margin: 0px;
+    }
+
+    .infos {
+        margin-top: 60px;
+        padding: 30px;
+        background-color: rgb(212, 212, 212);
+        display: flex;
+        color: rgb(112, 112, 112);
+        flex-direction: column
+    }
+
+    #rec {
+        background-color: red;
+        border-style: none;
+        padding: 20px;
+        color: white;
+        border-radius: 30px;
+        box-shadow: 0 4px 20px rgb(186, 186, 186);
+    }
+
+    #rec:hover {
+        cursor: pointer;
+    }
+
+    .befehle {
+        margin-top: 20px;
+        
+    }
+
+    .befehle p {
+        font-family: 'Secular One', sans-serif;
+    }
+
+
+</style>
+
+<body>
+    
+    <div class="wrapper">
+
+        <div class="text">
+
+            <h1>OBS CONTROL UNIT</h1>
+
+
+        </div>
+
+        <div class="infos">
+            <p id="info-version">Loading...</p>
+            <p id="currentScene">Loading...</p>
+            <p id="allScenes"></p>
+        </div>
+
+        <div class="befehle">
+            <button onClick="f1()" id="rec"><p>AUFNAHME STARTEN</p></button>
+            <button onClick="f2()" id="showRep"><p>LAST REPLAY</p></button>
+            <button onClick="f3()" id="showGameplay"><p>GAMEPLAY</p></button>
+        </div>
+        
+
+
+    </div>
+
+    
+
+
+</body>
+
+<script type='text/javascript' src='./obs-websocket.js'></script>
+
+<script>
+
+    let scenesOBS;
+    
+    const infoVersion = document.getElementById("info-version")
+    const currentSceneObs= document.getElementById("currentScene")
+    const allScenes = document.getElementById("allScenes")
+    const obs = new OBSWebSocket();
+    obs.connect({
+            address: 'localhost:8080',
+            password: 'Suppenkasper'
+        })
+        .then(() => {
+            console.log(`Success! We're connected & authenticated.`);
+
+            return obs.send('GetSceneList');
+        })
+        .then(data => {
+            console.log(`${data.scenes.length} Available Scenes!`);
+
+            data.scenes.forEach(scene => {
+                if (scene.name !== data.currentScene) {
+                    console.log(`Found a different scene! Switching to Scene: ${scene.name}`);
+
+                    obs.send('SetCurrentScene', {
+                        'scene-name': scene.name
+                    });
+                }
+            });
+
+            return obs.send('GetVersion');
+        })
+        .then(data => {
+            infoVersion.innerHTML = `OBS-Version: ${data['obs-studio-version']}`
+            return obs.send('GetSceneList')
+        })
+        .then(data => {
+            scenesOBS = data.scene
+            data.scenes.forEach (scene => {
+                allScenes.innerHTML += `${scene.name} `
+            })
+            
+            
+        })
+        
+
+
+
+        .catch(err => { // Promise convention dicates you have a catch on every chain.
+            console.log(err);
+        });
+
+
+
+    
+
+
+
+    obs.on('SwitchScenes', data => {
+        console.log(`New Active Scene: ${data.sceneName}`);
+        currentSceneObs.innerHTML = `Aktuelle Scene: ${data.sceneName}`;
+    
+    });
+
+    // You must add this handler to avoid uncaught exceptions.
+    obs.on('error', err => {
+        console.error('socket error:', err);
+    });
+
+
+
+    function f1() {
+        obs.sendCallback('StartRecording', (error) => {
+              // Code here...
+            });
+    }
+
+    function f2() {
+
+        obs.send('GetSceneList')
+        .then(data => {
+            data.scenes.forEach(scene => {
+                if(scene.name == "GAMEPLAY [REPLAY]") {
+                obs.send('SetCurrentScene', {
+                'scene-name': scene.name
+                });
+
+                }
+            })
+        })
+    } 
+
+    function f3() {
+
+        obs.send('GetSceneList')
+        .then(data => {
+            data.scenes.forEach(scene => {
+                if(scene.name == "GAMEPLAY-ME") {
+                    obs.send('SetCurrentScene', {
+                    'scene-name': scene.name
+                    });
+            
+                }
+            })
+        })
+    } 
+
+
+
+
+
+
+</script>
+
+</html>

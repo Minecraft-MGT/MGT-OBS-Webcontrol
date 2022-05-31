@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS CONTROL</title>
+</head>
+<body>
+    
+    <button onClick="Authentifizieren()" id="rec">Authentifizieren</button>
+
+
+</body>
+
+<script>
+    let ws = new WebSocket("ws://localhost:8080")
+    const rec = document.getElementById("rec");
+
+    const password = "Suppenkasper"
+
+
+
+    ws.onmessage = message => {
+        const response = JSON.parse(message.data)
+
+        console.log(response)
+
+        if (response['message-id'] == "1") {
+            const challenge = response.challenge
+            const salt = response.salt
+
+
+            //WORKFLOW
+            const secret_string = password + salt
+
+
+
+
+
+
+
+
+
+
+            sha256(secret_string).then(value =>
+                promiseInput1(value)
+            )
+
+            function promiseInput1(input) {
+                secret_hash = input
+                const secret = btoa(secret_hash)
+
+                //--
+
+                const auth_response_string = secret + challenge
+
+                sha256(auth_response_string).then(valuee =>
+                    promiseInput2(valuee)
+                )
+                
+
+                function promiseInput2(input2) {
+                    auth_response_hash = input2
+                    const auth_response = btoa(auth_response_hash)
+
+                    console.log(auth_response)
+
+                    let PayLoad = {
+                        "request-type": "Authenticate",
+                        "auth": auth_response,
+                        "message-id": "2"
+                    }
+
+                    ws.send(JSON.stringify(PayLoad));
+
+                }
+            
+            }
+
+            
+
+        }
+
+
+    }
+
+
+    
+    
+
+    function Authentifizieren() {
+
+        let PayLoad = {
+            "request-type": "GetAuthRequired",
+            "message-id": "1"
+        }
+
+        ws.send(JSON.stringify(PayLoad));
+
+    }
+
+    
+
+    async function sha256(message) {
+    // encode as UTF-8
+        const msgBuffer = new TextEncoder().encode(message);                    
+
+        // hash the message
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+
+        // convert ArrayBuffer to Array
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+        // convert bytes to hex string                  
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+    }
+
+    
+
+
+
+
+</script>
+
+</html>
